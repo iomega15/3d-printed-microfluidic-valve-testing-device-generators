@@ -14,10 +14,12 @@ Both files render manifold with no errors and take well under a second.
 | `printability_device.scad` | **Printability Device** — arrays of enclosed rigid channels; the roof bridges two sidewalls with the front and back faces open | Stage I, the printability sweep (manuscript Section 3.1, Figures 3-5) |
 | `functionality_device.scad` | **Functionality Device** — the same channel plus an enclosed control chamber above the membrane, open-faced front and back for transmitted-light imaging | Stage II onward, membrane functionality and seat geometry (Sections 3.2-3.4, Figures 6-8) |
 
-| `tool/index.html` | **Interactive design tool** -- the geometric closure calculator. Enter your measured membrane deflection coefficient and channel geometry and it returns the required membrane width and spherical seat radius. Open the file in any browser, no install or network needed. | Stage III, seat design (Section 3.3.3) |
-
 `examples/` holds one STL rendered from each file at the committed default parameters,
 for anyone who wants the geometry without installing OpenSCAD.
+
+The seat radius and penetration these devices need come from the companion interactive
+design tool, kept in its own repository (`printed-valve-design-framework`) and also
+provided in the ESI of the paper.
 
 All dimensions are expressed in **printer pixels** (in-plane) and **print layers**
 (vertical), so the geometry ports to another printer by changing only the pixel pitch
