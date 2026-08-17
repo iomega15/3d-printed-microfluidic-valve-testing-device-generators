@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Microfluidic Valve Diagram v6</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 22px; margin-bottom: 5px; }
+  h2 { font-size: 14px; margin-top: 0; color: #666; font-weight: normal; }
+  .model-bar {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 13px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .model-bar input[type="number"] {
+    width: 55px; font-size: 12px; text-align: center;
+    border: 1px solid #bbb; border-radius: 4px; padding: 2px 3px;
+  }
+  .model-bar .pitch { color: #555; }
+  .legend {
+    max-width: 720px;
+    margin: 4px 0 14px;
+    padding: 10px 16px;
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    background: #fbfbfd;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 26px;
+    font-size: 12px;
+    color: #444;
+  }
+  .legend b { color: #000; font-family: 'Times New Roman', serif; }
+  .legend .head {
+    font-size: 11px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 2px;
+  }
+  .legend .out b { color: #225; }
+  .controls {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 15px;
+    padding: 18px 25px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #f9f9f9;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .control-group label {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .control-group .desc {
+    font-size: 11px;
+    color: #888;
+  }
+  .control-group input[type="range"] { width: 140px; }
+  .control-group input[type="number"] {
+    width: 80px;
+    font-size: 13px;
+    text-align: center;
+    font-weight: bold;
+    padding: 3px 4px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+  }
+  .results {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .results span {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #ccd;
+    background: #eef;
+  }
+  .results span small { color: #557; font-weight: normal; }
+  html { scroll-behavior: smooth; }
+  .jumpnote { font-size: 12px; margin: 2px 0 10px; }
+  .jumpnote a { color: #47c; text-decoration: none; }
+  .jumpnote a:hover { text-decoration: underline; }
+  .refsection { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 18px; }
+  .fitnote {
+    max-width: 720px; font-size: 12px; color: #555; margin: 0 0 10px;
+  }
+  .fitbox {
+    max-width: 720px; width: 100%; margin: 0 0 14px;
+    border: 1px solid #d8d8e2; border-radius: 8px;
+    background: #f7f9ff; padding: 8px 16px; font-size: 13px;
+    box-sizing: border-box;
+  }
+  .fitbox summary { cursor: pointer; font-weight: bold; }
+  .fitbox textarea { width: 100%; font-family: Consolas, monospace; font-size: 12px; margin: 6px 0; box-sizing: border-box; }
+  .fitrow { display: flex; gap: 18px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+  .fitout { font-weight: bold; color: #225; }
+</style>
+</head>
+<body>
+
+<h1 id="top">Microfluidic Membrane Valve</h1>
+<h2 id="subtitle">Circular-arc membrane deflection model &mdash; s = κC (linear, n = 1)</h2>
+
+<div class="model-bar">
+  <label><input type="checkbox" id="quantMode"> <strong>quantized units</strong> (W in printer px; g, H<sub>d</sub> in layers)</label>
+  <span class="pitch" id="pitchBox" style="display:none;">
+    &mu;m/px <input type="number" id="pxPitch" value="32" step="1" min="0.1">
+    &nbsp;&mu;m/layer <input type="number" id="layerPitch" value="50" step="1" min="0.1">
+  </span>
+</div>
+
+<div class="controls" id="controls"></div>
+
+<div class="results" id="results"></div>
+
+<div class="jumpnote"><a href="#reference">&#9432; Symbol definitions &amp; κ-fitting utility &darr;</a></div>
+
+<svg id="diagram" viewBox="0 0 800 400" width="750" height="375" preserveAspectRatio="xMidYMin meet" xmlns="http://www.w3.org/2000/svg"></svg>
+
+<div id="reference" class="refsection">
+<div class="legend">
+  <div class="head">Inputs (what you set)</div>
+  <div class="head" style="grid-column:auto;">Outputs (what the tool returns)</div>
+  <div><b>g</b> &mdash; open lumen: flow gap left under the fully deflected membrane (= s &minus; d)</div>
+  <div class="out"><b>C</b> &mdash; required membrane width (width of the deformable membrane region)</div>
+  <div><b>κ</b> &mdash; membrane deflection coefficient at the operating pressure: sagitta per unit membrane width (dimensionless, s/C in matching units). Stiffer / thicker membranes have smaller κ.</div>
+  <div class="out"><b>R</b> &mdash; radius of curvature of the deflected membrane</div>
+  <div><b>W</b> &mdash; flow-channel width</div>
+  <div class="out"><b>s</b> &mdash; sagitta: peak membrane deflection (chord &rarr; arc bottom)</div>
+  <div><b>H<sub>d</sub></b> &mdash; doormat / seat height (set 0 for a recess cut into the floor)</div>
+  <div class="out"><b>d</b> &mdash; depth the seat cuts below the channel ceiling (= s &minus; g)</div>
+  <div><b>n</b> &mdash; deflection exponent (n = 1: linear; n = 4/3 &asymp; large-deflection membrane theory)</div>
+  <div class="out"><b>H<sub>c</sub></b> &mdash; total channel height (= H<sub>d</sub> + g)</div>
+</div>
+
+<div class="fitnote"><b>Note:</b> fit <b>κ</b> only on the pre-contact (rising) regime of your
+deflection data &mdash; once the membrane touches the channel floor, measured reach saturates at the
+channel height and no longer reflects free deflection; including saturated widths underestimates
+<b>κ</b>. The utility below applies this exclusion automatically.</div>
+
+<details class="fitbox">
+  <summary>Fit κ from measured deflection data (auto-excludes floor-contact-saturated points)</summary>
+  <div>
+    <div style="margin-top:6px;">Paste one measurement per line: <b>C&nbsp;&nbsp;s</b>
+      (membrane width and sagitta, same physical units, e.g. &micro;m; separators: space or comma)</div>
+    <textarea id="fitData" rows="6" placeholder="e.g.&#10;960  55&#10;1280 92&#10;1600 148"></textarea>
+    <div class="fitrow">
+      <label>H<sub>c</sub> (channel height, same units): <input type="number" id="fitHc" value="250" style="width:80px"></label>
+      <label>Saturation cutoff (&times;H<sub>c</sub>): <input type="number" id="fitSat" value="0.85" step="0.05" min="0.1" max="1" style="width:65px"></label>
+    </div>
+    <div class="fitrow">
+      <button id="fitLin">Fit linear (s = κC)</button>
+      <button id="fitPow">Fit power law (s = κC&#8319;)</button>
+      <span id="fitOut" class="fitout"></span>
+    </div>
+  </div>
+</details>
+
+  <div class="jumpnote" style="margin-top:10px;"><a href="#top">&uarr; back to the calculator</a></div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+//  CONTROL DEFINITIONS
+//  Each parameter has a slider + numeric field in two-way sync. Typing a
+//  value beyond the slider range auto-extends the slider. Controls g, W, Hd
+//  carry TWO range definitions: base (unit-agnostic / um) and quantized
+//  (printer px for W; layers for g and Hd).
+//  k defaults to its maximum: large k -> smallest required C -> the diagram
+//  fits on screen when the page is first opened.
+// ---------------------------------------------------------------------------
+const CONTROLS = [
+  { key:'g',  label:'g (open lumen)',        desc:'s &minus; d',            hardMin:0.01,
+    base:{min:1,   max:80,  step:1,    val:20},  quant:{min:0.2, max:10,  step:0.2,  val:0.4}, qdesc:'layers' },
+  { key:'k',  label:'κ (empirical const.)',  desc:'s / C&#8319;',           hardMin:1e-5,
+    base:{min:0.02,max:0.45,step:0.005,val:0.45}, quant:null },
+  { key:'W',  label:'W (channel width)',     desc:'flow channel',           hardMin:0.01,
+    base:{min:40,  max:250, step:5,    val:120}, quant:{min:10,  max:250, step:5,    val:120}, qdesc:'printer px' },
+  { key:'Hd', label:'H<sub>d</sub> (doormat ht.)', desc:'valve seat (&ge;0)', hardMin:0,
+    base:{min:0,   max:150, step:5,    val:40},  quant:{min:0,   max:8,   step:0.5,  val:1},   qdesc:'layers (&ge;0)' },
+  { key:'n',  label:'n (exponent)',          desc:'n = 1 (linear)',         hardMin:0.1,
+    base:{min:1,   max:4,   step:0.01, val:1},   quant:null },
+];
+
+const ctrlDiv = document.getElementById('controls');
+const els = {};
+
+CONTROLS.forEach(c => {
+  const group = document.createElement('div');
+  group.className = 'control-group';
+  group.innerHTML = `
+    <label>${c.label}</label>
+    <div class="desc">${c.desc}</div>
+    <input type="range"  id="${c.key}Range" min="${c.base.min}" max="${c.base.max}" step="${c.base.step}" value="${c.base.val}">
+    <input type="number" id="${c.key}Num"   min="${c.hardMin}" step="${c.base.step}" value="${c.base.val}">
+  `;
+  ctrlDiv.appendChild(group);
+
+  const range = group.querySelector('input[type=range]');
+  const num   = group.querySelector('input[type=number]');
+  const desc  = group.querySelector('.desc');
+  els[c.key] = { range, num, desc, def: c, group };
+
+  range.addEventListener('input', () => { num.value = range.value; update(); });
+
+  num.addEventListener('input', () => {
+    let v = parseFloat(num.value);
+    if (isNaN(v)) return;
+    if (v < c.hardMin) v = c.hardMin;
+    if (v > parseFloat(range.max)) range.max = v;
+    if (v < parseFloat(range.min)) range.min = v;
+    range.value = v;
+    update();
+  });
+});
+
+const svg     = document.getElementById('diagram');
+const resDiv  = document.getElementById('results');
+const subtitle = document.getElementById('subtitle');
+const quantChk = document.getElementById('quantMode');
+const pitchBox = document.getElementById('pitchBox');
+
+function pxPitch()    { const v = parseFloat(document.getElementById('pxPitch').value);    return (isFinite(v) && v > 0) ? v : 32; }
+function layerPitch() { const v = parseFloat(document.getElementById('layerPitch').value); return (isFinite(v) && v > 0) ? v : 50; }
+
+function applyRanges(c, defs, value) {
+  const e = els[c.key];
+  e.range.min = defs.min; e.range.max = defs.max; e.range.step = defs.step;
+  e.num.step  = defs.step;
+  let v = Math.min(Math.max(value, defs.min), Math.max(defs.max, value));
+  if (v > parseFloat(e.range.max)) e.range.max = v;
+  e.range.value = v;
+  e.num.value   = +v.toPrecision(4);
+}
+
+// Toggle quantized mode: load each mode's default ranges/values. (The base
+// mode is unit-agnostic, so numeric conversion between modes would be
+// ambiguous; a clean per-mode default is more predictable.)
+quantChk.addEventListener('change', () => {
+  const q = quantChk.checked;
+  pitchBox.style.display = q ? 'inline' : 'none';
+  CONTROLS.forEach(c => {
+    if (!c.quant) return;
+    const e = els[c.key];
+    if (q) {
+      applyRanges(c, c.quant, c.quant.val);
+      e.desc.innerHTML = c.qdesc;
+    } else {
+      applyRanges(c, c.base, c.base.val);
+      e.desc.innerHTML = c.desc;
+    }
+  });
+  update();
+});
+
+document.getElementById('pxPitch').addEventListener('input', update);
+document.getElementById('layerPitch').addEventListener('input', update);
+
+function readVal(key) {
+  const v = parseFloat(els[key].num.value);
+  return isNaN(v) ? els[key].def.base.val : v;
+}
+
+// ---------------------------------------------------------------------------
+//  CORE GEOMETRY
+//  Circular arc: chord C, sagitta s, radius R -> R = (C^2 + 4 s^2)/(8 s)
+//  Sealing corner at (x = +-W/2, depth g): R = (W^2 + 4 d^2)/(8 d), d = s - g
+//  Constitutive relation: s = k C^n  (n = 1 has a closed form)
+// ---------------------------------------------------------------------------
+function computeLinear(g, k, W) {
+  const k2   = k * k;
+  const disc = g * g * (1 + 4 * k2) * (1 + 4 * k2) + 4 * k2 * W * W;
+  return (g * (1 - 4 * k2) + Math.sqrt(disc)) / 2;
+}
+
+function computePower(g, k, W, n) {
+  const Rarc  = s => (Math.pow(s / k, 2 / n) + 4 * s * s) / (8 * s);
+  const Rseal = s => { const d = s - g; return (W * W + 4 * d * d) / (8 * d); };
+  const F     = s => Rarc(s) - Rseal(s);
+  let lo = g * (1 + 1e-7) + 1e-9;
+  let hi = g + W / 2;
+  let guard = 0;
+  while (F(hi) < 0 && guard < 200) { hi += W / 2; guard++; }
+  for (let i = 0; i < 120; i++) {
+    const mid = 0.5 * (lo + hi);
+    if (F(mid) > 0) hi = mid; else lo = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+
+function compute(g, k, W, Hd, n) {
+  const s = (Math.abs(n - 1) < 1e-9) ? computeLinear(g, k, W) : computePower(g, k, W, n);
+  const C = Math.pow(s / k, 1 / n);
+  const R = (C * C + 4 * s * s) / (8 * s);
+  const d = s - g;
+  const Hc = Hd + g;
+  return { s, C, R, d, Hc };
+}
+
+function arrow(x, y, dx, dy, size) {
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len === 0) return '';
+  const ux = dx / len, uy = dy / len;
+  const px = -uy, py = ux;
+  const hw = size * 0.38;
+  const bx = x - ux * size, by = y - uy * size;
+  return `<polygon points="${x},${y} ${bx + px * hw},${by + py * hw} ${bx - px * hw},${by - py * hw}" fill="#000"/>`;
+}
+
+function update() {
+  const q  = quantChk.checked;
+  const pp = pxPitch(), lp = layerPitch();
+  const n  = readVal('n');
+  const k  = readVal('k');
+
+  // Convert quantized inputs to a common physical unit (um) for the geometry:
+  // a circle only exists when both axes share one unit.
+  const g  = q ? readVal('g')  * lp : readVal('g');
+  const W  = q ? readVal('W')  * pp : readVal('W');
+  const Hd = q ? readVal('Hd') * lp : readVal('Hd');
+
+  subtitle.innerHTML = (Math.abs(n - 1) < 1e-9)
+    ? 'Circular-arc membrane deflection model &mdash; s = κC (linear, n = 1)'
+    : `Circular-arc membrane deflection model &mdash; s = κ&middot;C<sup>${(+n.toFixed(3))}</sup> (power law)`;
+
+  const { s, C, R, d, Hc } = compute(g, k, W, Hd, n);
+
+  if (q) {
+    resDiv.innerHTML = `
+      <span>C = <strong>${C.toFixed(0)}</strong> &mu;m <small>(${(C/pp).toFixed(1)} px)</small></span>
+      <span>R = <strong>${R.toFixed(0)}</strong> &mu;m</span>
+      <span>s = <strong>${s.toFixed(1)}</strong> &mu;m <small>(${(s/lp).toFixed(2)} layers)</small></span>
+      <span>d = <strong>${d.toFixed(1)}</strong> &mu;m <small>(${(d/lp).toFixed(2)} layers)</small></span>
+      <span>H<sub>c</sub> = <strong>${Hc.toFixed(0)}</strong> &mu;m <small>(${(Hc/lp).toFixed(2)} layers)</small></span>
+    `;
+  } else {
+    resDiv.innerHTML = `
+      <span>C = <strong>${C.toFixed(1)}</strong></span>
+      <span>R = <strong>${R.toFixed(1)}</strong></span>
+      <span>s = <strong>${s.toFixed(2)}</strong></span>
+      <span>d = <strong>${d.toFixed(2)}</strong></span>
+      <span>H<sub>c</sub> = <strong>${Hc.toFixed(1)}</strong></span>
+    `;
+  }
+
+  if (!(C > W) || !isFinite(C) || !isFinite(R) || s <= g) {
+    svg.innerHTML = `<text x="400" y="350" text-anchor="middle" font-size="16" fill="red">
+      C (${C.toFixed(1)}) must be &gt; W (${W.toFixed(1)}). Increase g, decrease κ, or decrease W.</text>`;
+    return;
+  }
+
+  // ---- SCALING & LAYOUT ----
+  const cx = 400;
+  const totalW = Math.max(C, W) + 200;
+  const totalH = s + Hd + 180;
+  const sc = Math.min(650 / totalW, 500 / totalH, 3.5);
+
+  const sS  = s * sc;
+  const CS  = C * sc;
+  const WS  = W * sc;
+  const HdS = Hd * sc;
+  const RS  = R * sc;
+  const gS  = g * sc;
+
+  const chordY = Math.max(20 + 2 * RS - sS, 60) + 40;
+  const cyScreen = chordY + sS - RS;
+
+  const doormatTop = chordY + gS;
+  const doormatBot = doormatTop + HdS;
+  const arcBot     = chordY + sS;
+
+  const chordL = cx - CS / 2;
+  const chordR = cx + CS / 2;
+  const rectL  = cx - WS / 2;
+  const rectR  = cx + WS / 2;
+
+  const vH = Math.max(doormatBot + 60, arcBot + 60, 220);
+  const renderW = 750;
+  svg.setAttribute('viewBox', `0 0 800 ${vH}`);
+  svg.setAttribute('width', renderW);
+  svg.setAttribute('height', Math.round(vH * renderW / 800));
+
+  const drawHd = HdS > 4;
+
+  let h = '';
+
+  // ===== RECTANGLE (doormat) -- a bare floor line when H_d = 0 =====
+  if (HdS > 0.5) {
+    h += `<rect x="${rectL}" y="${doormatTop}" width="${WS}" height="${HdS}"
+           fill="none" stroke="#000" stroke-width="2"/>`;
+  } else {
+    h += `<line x1="${rectL}" y1="${doormatTop}" x2="${rectR}" y2="${doormatTop}"
+           stroke="#000" stroke-width="2"/>`;
+  }
+
+  // ===== CHORD LINE =====
+  h += `<line x1="${chordL}" y1="${chordY}" x2="${chordR}" y2="${chordY}"
+         stroke="#000" stroke-width="2"/>`;
+
+  // ===== SOLID ARC (dips downward) =====
+  h += `<path d="M ${chordL},${chordY} A ${RS},${RS} 0 0,0 ${chordR},${chordY}"
+         fill="none" stroke="#000" stroke-width="2"/>`;
+
+  // ===== DOTTED ARC (completes circle above) =====
+  h += `<path d="M ${chordR},${chordY} A ${RS},${RS} 0 1,0 ${chordL},${chordY}"
+         fill="none" stroke="#000" stroke-width="1.5" stroke-dasharray="8,5"/>`;
+
+  // ===== CENTER MARK =====
+  h += `<line x1="${cx - 7}" y1="${cyScreen}" x2="${cx + 7}" y2="${cyScreen}" stroke="#000" stroke-width="1.5"/>`;
+  h += `<line x1="${cx}" y1="${cyScreen - 7}" x2="${cx}" y2="${cyScreen + 7}" stroke="#000" stroke-width="1.5"/>`;
+
+  // ===== DIMENSION: C =====
+  const cDimY = Math.min(chordY, cyScreen - RS) - 25;
+  h += `<line x1="${chordL}" y1="${chordY}" x2="${chordL}" y2="${cDimY - 5}"
+         stroke="#000" stroke-width="0.6" stroke-dasharray="2,3"/>`;
+  h += `<line x1="${chordR}" y1="${chordY}" x2="${chordR}" y2="${cDimY - 5}"
+         stroke="#000" stroke-width="0.6" stroke-dasharray="2,3"/>`;
+  h += `<line x1="${chordL}" y1="${cDimY}" x2="${chordR}" y2="${cDimY}"
+         stroke="#000" stroke-width="1.2"/>`;
+  h += arrow(chordL, cDimY, -1, 0, 10);
+  h += arrow(chordR, cDimY, 1, 0, 10);
+  h += `<text x="${cx}" y="${cDimY - 6}" text-anchor="middle"
+         font-family="'Times New Roman',serif" font-size="18" fill="#000">C</text>`;
+
+  // ===== DIMENSION: W (below rectangle) =====
+  const wDimY = doormatBot + 30;
+  h += `<line x1="${rectL}" y1="${doormatBot}" x2="${rectL}" y2="${wDimY + 5}"
+         stroke="#000" stroke-width="0.7"/>`;
+  h += `<line x1="${rectR}" y1="${doormatBot}" x2="${rectR}" y2="${wDimY + 5}"
+         stroke="#000" stroke-width="0.7"/>`;
+  h += `<line x1="${rectL}" y1="${wDimY}" x2="${rectR}" y2="${wDimY}"
+         stroke="#000" stroke-width="1.2"/>`;
+  h += arrow(rectL, wDimY, -1, 0, 10);
+  h += arrow(rectR, wDimY, 1, 0, 10);
+  h += `<text x="${cx}" y="${wDimY + 18}" text-anchor="middle"
+         font-family="'Times New Roman',serif" font-size="18" fill="#000">W</text>`;
+
+  // ===== DIMENSION: Hd (doormat height, left side) =====
+  const hdDimX = rectL - 35;
+  if (drawHd) {
+    h += `<line x1="${rectL}" y1="${doormatTop}" x2="${hdDimX - 5}" y2="${doormatTop}"
+           stroke="#000" stroke-width="0.7"/>`;
+    h += `<line x1="${rectL}" y1="${doormatBot}" x2="${hdDimX - 5}" y2="${doormatBot}"
+           stroke="#000" stroke-width="0.7"/>`;
+    h += `<line x1="${hdDimX}" y1="${doormatTop}" x2="${hdDimX}" y2="${doormatBot}"
+           stroke="#000" stroke-width="1.2"/>`;
+    h += arrow(hdDimX, doormatTop, 0, -1, 10);
+    h += arrow(hdDimX, doormatBot, 0, 1, 10);
+    const hdMidY = (doormatTop + doormatBot) / 2;
+    h += `<text x="${hdDimX - 5}" y="${hdMidY}" text-anchor="middle"
+           font-family="'Times New Roman',serif" font-size="16" fill="#000"
+           transform="rotate(-90, ${hdDimX - 5}, ${hdMidY})">H<tspan font-size="12" dy="4">d</tspan></text>`;
+  }
+
+  // ===== DIMENSION: d (membrane intrusion below doormat top, right side) =====
+  const dDimX = rectR + 35;
+  h += `<line x1="${rectR}" y1="${doormatTop}" x2="${dDimX + 5}" y2="${doormatTop}"
+         stroke="#000" stroke-width="0.7"/>`;
+  h += `<line x1="${cx}" y1="${arcBot}" x2="${dDimX + 5}" y2="${arcBot}"
+         stroke="#000" stroke-width="0.7" stroke-dasharray="3,3"/>`;
+  h += `<line x1="${dDimX}" y1="${doormatTop}" x2="${dDimX}" y2="${arcBot}"
+         stroke="#000" stroke-width="1.2"/>`;
+  h += arrow(dDimX, doormatTop, 0, -1, 10);
+  h += arrow(dDimX, arcBot, 0, 1, 10);
+  const dMidY = (doormatTop + arcBot) / 2;
+  h += `<text x="${dDimX + 14}" y="${dMidY + 5}" text-anchor="start"
+         font-family="'Times New Roman',serif" font-size="18" font-style="italic" fill="#000">d</text>`;
+
+  // ===== DIMENSION: g (open lumen, far right) =====
+  const glDimX = dDimX + 50;
+  h += `<line x1="${chordR}" y1="${chordY}" x2="${glDimX + 5}" y2="${chordY}"
+         stroke="#000" stroke-width="0.5" stroke-dasharray="2,3"/>`;
+  h += `<line x1="${dDimX + 5}" y1="${doormatTop}" x2="${glDimX + 5}" y2="${doormatTop}"
+         stroke="#000" stroke-width="0.5" stroke-dasharray="2,3"/>`;
+  h += `<line x1="${glDimX}" y1="${chordY}" x2="${glDimX}" y2="${doormatTop}"
+         stroke="#666" stroke-width="1.2"/>`;
+  h += arrow(glDimX, chordY, 0, -1, 8);
+  h += arrow(glDimX, doormatTop, 0, 1, 8);
+  const gMidY = (chordY + doormatTop) / 2;
+  h += `<text x="${glDimX + 12}" y="${gMidY + 5}" text-anchor="start"
+         font-family="'Times New Roman',serif" font-size="16" fill="#000"
+         font-style="italic">g</text>`;
+
+  // ===== DIMENSION: Hc (total channel height, far left) =====
+  const hcDimX = (drawHd ? hdDimX : rectL) - 45;
+  h += `<line x1="${rectL - 5}" y1="${chordY}" x2="${hcDimX - 5}" y2="${chordY}"
+         stroke="#000" stroke-width="0.5" stroke-dasharray="2,3"/>`;
+  h += `<line x1="${rectL - 5}" y1="${doormatBot}" x2="${hcDimX - 5}" y2="${doormatBot}"
+         stroke="#000" stroke-width="0.5" stroke-dasharray="2,3"/>`;
+  h += `<line x1="${hcDimX}" y1="${chordY}" x2="${hcDimX}" y2="${doormatBot}"
+         stroke="#000" stroke-width="1.2"/>`;
+  h += arrow(hcDimX, chordY, 0, -1, 10);
+  h += arrow(hcDimX, doormatBot, 0, 1, 10);
+  const hcMidY = (chordY + doormatBot) / 2;
+  h += `<text x="${hcDimX - 5}" y="${hcMidY}" text-anchor="middle"
+         font-family="'Times New Roman',serif" font-size="16" fill="#000"
+         transform="rotate(-90, ${hcDimX - 5}, ${hcMidY})">H<tspan font-size="12" dy="4">c</tspan></text>`;
+
+  // ===== DIMENSION: s (sagitta, center dashed reference) =====
+  const sDimX = cx + 12;
+  h += `<line x1="${sDimX}" y1="${chordY}" x2="${sDimX}" y2="${arcBot}"
+         stroke="#999" stroke-width="0.8" stroke-dasharray="4,3"/>`;
+  h += `<text x="${sDimX + 8}" y="${(chordY + arcBot) / 2 + 5}" text-anchor="start"
+         font-family="'Times New Roman',serif" font-size="14" fill="#999" font-style="italic">s</text>`;
+
+  // ===== DIMENSION: R (radius) =====
+  const rEndX = rectR;
+  const rEndY = doormatTop;
+  h += `<line x1="${cx}" y1="${cyScreen}" x2="${rEndX}" y2="${rEndY}"
+         stroke="#000" stroke-width="1.2"/>`;
+  h += arrow(cx, cyScreen, cx - rEndX, cyScreen - rEndY, 10);
+  h += arrow(rEndX, rEndY, rEndX - cx, rEndY - cyScreen, 10);
+  const rMidX = (cx + rEndX) / 2, rMidY = (cyScreen + rEndY) / 2;
+  h += `<text x="${rMidX + 12}" y="${rMidY - 8}" text-anchor="start"
+         font-family="'Times New Roman',serif" font-size="18" fill="#000">R</text>`;
+
+  svg.innerHTML = h;
+}
+
+// ---------------------------------------------------------------------------
+//  k-FIT UTILITY (physical units; independent of the quantized-input mode)
+// ---------------------------------------------------------------------------
+function parseFitData() {
+  const Hc  = parseFloat(document.getElementById('fitHc').value);
+  const sat = parseFloat(document.getElementById('fitSat').value);
+  const rows = document.getElementById('fitData').value.trim().split(/\n+/);
+  const used = [], excl = [];
+  rows.forEach(r => {
+    const p = r.trim().split(/[\s,;]+/).map(Number);
+    if (p.length < 2 || !isFinite(p[0]) || !isFinite(p[1]) || p[0] <= 0) return;
+    const C = p[0], s = p[1];
+    if (s <= 0)                                       excl.push('onset');
+    else if (isFinite(Hc) && Hc > 0 && s >= sat * Hc) excl.push('saturated');
+    else used.push([C, s]);
+  });
+  return { used, excl };
+}
+
+function setCtrl(key, v) {
+  const e = els[key];
+  if (v > parseFloat(e.range.max)) e.range.max = v;
+  if (v < parseFloat(e.range.min)) e.range.min = v;
+  e.range.value = v;
+  e.num.value   = v;
+}
+
+function fitReport(kv, nv, R2, used, excl) {
+  const nsat = excl.filter(x => x === 'saturated').length;
+  const nons = excl.filter(x => x === 'onset').length;
+  document.getElementById('fitOut').textContent =
+    `κ = ${kv.toPrecision(4)}` + (nv !== null ? `, n = ${nv.toFixed(3)}` : '') +
+    `, R² = ${R2.toFixed(3)} (${used} pts used` +
+    (nsat ? `, ${nsat} saturated excluded` : '') +
+    (nons ? `, ${nons} below onset excluded` : '') + ')';
+}
+
+document.getElementById('fitLin').addEventListener('click', () => {
+  const { used, excl } = parseFitData();
+  if (used.length < 2) { document.getElementById('fitOut').textContent = 'Need >= 2 usable points.'; return; }
+  let scs = 0, sc2 = 0, sm = 0;
+  used.forEach(([C, s]) => { scs += C * s; sc2 += C * C; sm += s; });
+  const k = scs / sc2;
+  sm /= used.length;
+  let ssRes = 0, ssTot = 0;
+  used.forEach(([C, s]) => { ssRes += (s - k * C) ** 2; ssTot += (s - sm) ** 2; });
+  const R2 = ssTot > 0 ? 1 - ssRes / ssTot : NaN;
+  setCtrl('n', 1);
+  setCtrl('k', +k.toPrecision(4));
+  fitReport(k, null, R2, used.length, excl);
+  update();
+});
+
+document.getElementById('fitPow').addEventListener('click', () => {
+  const { used, excl } = parseFitData();
+  if (used.length < 3) { document.getElementById('fitOut').textContent = 'Need >= 3 usable points for the power law.'; return; }
+  const lx = used.map(([C]) => Math.log(C));
+  const ly = used.map(([, s]) => Math.log(s));
+  const mx = lx.reduce((a, b) => a + b) / lx.length;
+  const my = ly.reduce((a, b) => a + b) / ly.length;
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < lx.length; i++) { sxy += (lx[i] - mx) * (ly[i] - my); sxx += (lx[i] - mx) ** 2; }
+  const n = sxy / sxx;
+  const k = Math.exp(my - n * mx);
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < lx.length; i++) {
+    const pred = my + n * (lx[i] - mx);
+    ssRes += (ly[i] - pred) ** 2; ssTot += (ly[i] - my) ** 2;
+  }
+  const R2 = ssTot > 0 ? 1 - ssRes / ssTot : NaN;
+  setCtrl('n', +n.toFixed(4));
+  setCtrl('k', +k.toPrecision(4));
+  fitReport(k, n, R2, used.length, excl);
+  update();
+});
+
+update();
+</script>
+</body>
+</html>

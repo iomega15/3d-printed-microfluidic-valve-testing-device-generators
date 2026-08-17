@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use these files, please cite both the paper and this deposit."
+title: "Parametric device generators for a geometry-first 3D-printed microfluidic valve framework"
+abstract: "OpenSCAD sources for the Printability and Functionality test devices used to
+  establish printability bounds, measure the membrane deflection coefficient, and derive
+  spherical valve-seat geometry for monolithically 3D-printed microfluidic membrane valves."
+type: software
+authors:
+  - family-names: Nguyen
+    given-names: Huu Anh Minh
+  - family-names: Vuong
+    given-names: Quynh Ai
+  - family-names: Nguyen
+    given-names: Nhu Doan Quynh
+  - family-names: Martins Cruz
+    given-names: Dae Jung
+  - family-names: Almanzar
+    given-names: Bernardino
+  - family-names: Goz
+    given-names: Abigail
+  - family-names: Khanna
+    given-names: Maanit
+  - family-names: Jitender
+    given-names: Rishabh
+  - family-names: Kinney
+    given-names: Aidan
+  - family-names: Chapek
+    given-names: Sergei
+  - family-names: Volosov
+    given-names: Mark
+  - family-names: Voronov
+    given-names: Roman
+    email: rvoronov@njit.edu
+keywords:
+  - microfluidics
+  - 3D printing
+  - vat photopolymerization
+  - membrane valve
+  - OpenSCAD
+license: [PLACEHOLDER - set on upload]
