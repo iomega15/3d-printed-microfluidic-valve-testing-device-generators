@@ -18,7 +18,7 @@ Both files render manifold with no errors and take well under a second.
 for anyone who wants the geometry without installing OpenSCAD.
 
 The seat radius and penetration these devices need come from the companion interactive
-design tool, kept in its own repository (`printed-valve-design-framework`) and also
+design tool, kept in its own repository (`printed-valve-design-framework-calculator`) and also
 provided in the ESI of the paper.
 
 All dimensions are expressed in **printer pixels** (in-plane) and **print layers**
