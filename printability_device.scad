@@ -13,9 +13,35 @@ DEBUG_TEXT_METRICS = true;          // Log text size calculations
 // USER INPUTS - MODIFY THESE ONLY
 // ================================
 
-/* --- Printer & resolution (physical units) --- */
-PIXEL_SIZE        = 0.032;          // [mm/px] projector pixel size in XY
-LAYER_THICKNESS   = 0.05;          // [mm/layer] slice height in Z
+/* --- PRINTER SELECTION --------------------------------------------------------
+   Everything dimensioned in pixels or layers follows from the machine, so pick the
+   machine here rather than editing the two constants below. Add a printer by
+   appending to each array and selecting its number.
+   Same convention as the other generators in this project: PRINTER_NUMBER is
+   1-based, so 1 is the first entry in the arrays.                                */
+PRINTER_NUMBER = 2;                 // 1 = Pro 4K (65 um), 2 = Ultra (32 um)
+
+PRINTER_NAMES              = ["Pro 4K 65um", "Ultra 32um"];
+PRINTER_BUILD_PLATE_X_SIZES = [175.49, 120.76];   // [mm] exact X from the Asiga software
+PRINTER_BUILD_PLATE_Y_SIZES = [ 98.75,  67.94];   // [mm] exact Y from the Asiga software
+PRINTER_PIXEL_SIZES         = [ 0.065,   0.032];  // [mm/px] XY projector pixel
+PRINTER_LAYER_THICKNESSES   = [ 0.020,   0.050];  // [mm/layer] slice height
+
+// Derived -- do not edit. The devices in the paper were printed on the Ultra.
+PRINTER_NAME       = PRINTER_NAMES[PRINTER_NUMBER-1];
+BUILD_PLATE_X_SIZE = PRINTER_BUILD_PLATE_X_SIZES[PRINTER_NUMBER-1];
+BUILD_PLATE_Y_SIZE = PRINTER_BUILD_PLATE_Y_SIZES[PRINTER_NUMBER-1];
+PIXEL_SIZE         = PRINTER_PIXEL_SIZES[PRINTER_NUMBER-1];       // [mm/px]
+LAYER_THICKNESS    = PRINTER_LAYER_THICKNESSES[PRINTER_NUMBER-1]; // [mm/layer]
+
+assert(PRINTER_NUMBER >= 1 && PRINTER_NUMBER <= len(PRINTER_NAMES),
+       str("PRINTER_NUMBER = ", PRINTER_NUMBER, " but only ", len(PRINTER_NAMES),
+           " printers are defined (1 = ", PRINTER_NAMES[0], ", 2 = ", PRINTER_NAMES[1],
+           "). Pick one of those, or append a new machine to each PRINTER_* array."));
+
+echo(str("=== PRINTER: ", PRINTER_NAME, " === build plate ", BUILD_PLATE_X_SIZE, " x ",
+         BUILD_PLATE_Y_SIZE, " mm | ", PIXEL_SIZE, " mm/px | ", LAYER_THICKNESS,
+         " mm/layer"));
 
 /* --- Array layout --- */
 array_cells_x     = 10;              // [count] columns (X)

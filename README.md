@@ -21,6 +21,24 @@ The seat radius and penetration these devices need come from the companion inter
 design tool, kept in its own repository (`microfluidic-valve-design-calculator`) and also
 provided in the ESI of the paper.
 
+## Choosing the printer
+
+Both files select the machine the same way, with a 1-based `PRINTER_NUMBER`:
+
+```
+PRINTER_NUMBER = 2;                 // 1 = Pro 4K (65 um), 2 = Ultra (32 um)
+PRINTER_NAMES              = ["Pro 4K 65um", "Ultra 32um"];
+PRINTER_BUILD_PLATE_X_SIZES = [175.49, 120.76];
+PRINTER_BUILD_PLATE_Y_SIZES = [ 98.75,  67.94];
+PRINTER_PIXEL_SIZES         = [ 0.065,   0.032];
+PRINTER_LAYER_THICKNESSES   = [ 0.020,   0.050];
+```
+
+The pixel pitch and layer height follow from that choice, so every pixel- and layer-denominated parameter rescales with the
+machine and nothing else needs touching. Add a printer by appending to each array and selecting its number; an out-of-range
+number stops the render with a message naming the machines that are defined. The devices reported in the paper were printed on
+the Ultra (`PRINTER_NUMBER = 2`), which is the shipped default.
+
 All dimensions are expressed in **printer pixels** (in-plane) and **print layers**
 (vertical), so the geometry ports to another printer by changing only the pixel pitch
 and layer height. For the Asiga machine used in the paper, 1 px = 32 um and

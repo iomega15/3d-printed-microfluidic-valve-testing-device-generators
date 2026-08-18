@@ -681,30 +681,32 @@ assert(WIDTH_MAX_PX >= WIDTH_MIN_PX,
 
 // This section defines physical printer capabilities. The code supports multiple
 // printers with different resolutions and build volumes. Select which printer
-// to use via SELECTED_PRINTER index.
+// to use via the PRINTER_NUMBER selector.
 
-// SELECTED_PRINTER: Which printer configuration to use (0-based index)
-//   0 = First printer in arrays below (larger build volume, coarser resolution)
-//   1 = Second printer in arrays below (smaller build volume, finer resolution)
-// Add more printer configs by expanding arrays and incrementing index
-SELECTED_PRINTER = 1;
+// PRINTER_NUMBER: which machine to build for. 1-BASED, matching the other generators
+// in this project, so 1 is the first entry in the arrays below.
+//   1 = Pro 4K (65 um pixel, larger plate, coarser)
+//   2 = Ultra  (32 um pixel, smaller plate, finer) -- used for the devices in the paper
+// Add a machine by appending to each PRINTER_* array and selecting its number.
+PRINTER_NUMBER = 2;
+PRINTER_NAMES  = ["Pro 4K 65um", "Ultra 32um"];
 
 // ---------------------
 // PRINTER BUILD PLATE DIMENSIONS
 // ---------------------
 // These arrays store the build plate size for each printer.
-// Array index corresponds to SELECTED_PRINTER value.
+// Array position corresponds to PRINTER_NUMBER (1-based).
 
 // PRINTER_BUILD_PLATE_X_SIZES: Build plate width (X direction) for each printer (mm)
 //   Index 0: 175.49mm - Larger printer X dimension
 //   Index 1: 120.76mm - Smaller/finer printer X dimension
-// When SELECTED_PRINTER = 1, the value 120.76mm is used
+// With PRINTER_NUMBER = 2, the value 120.76mm is used
 PRINTER_BUILD_PLATE_X_SIZES = [175.49, 120.76];
 
 // PRINTER_BUILD_PLATE_Y_SIZES: Build plate depth (Y direction) for each printer (mm)
 //   Index 0: 98.75mm - Larger printer Y dimension
 //   Index 1: 67.94mm - Smaller/finer printer Y dimension
-// When SELECTED_PRINTER = 1, the value 67.94mm is used
+// With PRINTER_NUMBER = 2, the value 67.94mm is used
 PRINTER_BUILD_PLATE_Y_SIZES = [98.75,  67.94];
 
 
@@ -809,10 +811,16 @@ TOTAL_GRID_PADDING_Y = 2.0;
 // ---------------------
 // These extract the selected printer's parameters from the arrays
 
-BUILD_PLATE_X_SIZE    = PRINTER_BUILD_PLATE_X_SIZES[SELECTED_PRINTER];
-BUILD_PLATE_Y_SIZE    = PRINTER_BUILD_PLATE_Y_SIZES[SELECTED_PRINTER];
-PIXEL_SIZE_CONST      = PRINTER_PIXEL_SIZES[SELECTED_PRINTER];
-LAYER_THICKNESS_CONST = PRINTER_LAYER_THICKNESSES[SELECTED_PRINTER];
+PRINTER_NAME          = PRINTER_NAMES[PRINTER_NUMBER-1];
+BUILD_PLATE_X_SIZE    = PRINTER_BUILD_PLATE_X_SIZES[PRINTER_NUMBER-1];
+BUILD_PLATE_Y_SIZE    = PRINTER_BUILD_PLATE_Y_SIZES[PRINTER_NUMBER-1];
+PIXEL_SIZE_CONST      = PRINTER_PIXEL_SIZES[PRINTER_NUMBER-1];
+LAYER_THICKNESS_CONST = PRINTER_LAYER_THICKNESSES[PRINTER_NUMBER-1];
+
+assert(PRINTER_NUMBER >= 1 && PRINTER_NUMBER <= len(PRINTER_NAMES),
+       str("PRINTER_NUMBER = ", PRINTER_NUMBER, " but only ", len(PRINTER_NAMES),
+           " printers are defined (1 = ", PRINTER_NAMES[0], ", 2 = ", PRINTER_NAMES[1],
+           "). Pick one of those, or append a new machine to each PRINTER_* array."));
 
 // ---------------------------------------------------------------------------
 // CONTROL-CHAMBER SIZE: which knob wins
@@ -860,7 +868,7 @@ if (chamber_y_px(default_cutout_y_size_in_pixels) < default_cutout_y_size_in_pix
 if (DEBUG_ECHO) {
     echo("===============================================================================");
     echo("=== ACTIVE PRINTER CONFIGURATION ===");
-    echo(str("  Selected printer index: ", SELECTED_PRINTER));
+    echo(str("  Printer: ", PRINTER_NAME, " (PRINTER_NUMBER = ", PRINTER_NUMBER, ")"));
     echo(str("  Build plate: ", BUILD_PLATE_X_SIZE, " x ", BUILD_PLATE_Y_SIZE, " mm"));
     echo(str("  XY resolution: ", PIXEL_SIZE_CONST, " mm/pixel"));
     echo(str("  Z resolution: ", LAYER_THICKNESS_CONST, " mm/layer"));
