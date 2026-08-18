@@ -35,7 +35,10 @@ PRINTER_LAYER_THICKNESSES   = [ 0.020,   0.050];
 ```
 
 The pixel pitch and layer height follow from that choice, so every pixel- and layer-denominated parameter rescales with the
-machine and nothing else needs touching. Add a printer by appending to each array and selecting its number; an out-of-range
+machine and nothing else needs touching. Both files also check what they generate against the selected plate: the printability
+array reports its occupied footprint (labels and base plate included) as a percentage of the plate and warns, with the overflow
+in millimetres, if it does not fit; the functionality strip reduces the device count to what fits and says so rather than
+truncating silently. Geometry outside the plate is clipped or rejected at slicing, so neither failure is loud on its own. Add a printer by appending to each array and selecting its number; an out-of-range
 number stops the render with a message naming the machines that are defined. The devices reported in the paper were printed on
 the Ultra (`PRINTER_NUMBER = 2`), which is the shipped default.
 

@@ -347,6 +347,33 @@ echo("======== ARRAY DIMENSIONS ========");
 echo("Total array width:", total_array_width, "mm");
 echo("Total array height:", total_array_height, "mm");
 
+/* --- Build-plate fit check ---------------------------------------------------
+   The array grows with array_cells_x/y and with the swept ranges, and the base plate
+   adds a label margin on each side, so it can outgrow the plate without anything here
+   complaining -- the slicer is where you would find out. Check it now instead. The
+   base plate is the widest thing in the scene when it is drawn (see bx/by below).   */
+footprint_x_mm = total_array_width  + label_margin_right_mm * (draw_base_plate ? 2 : 1);
+footprint_y_mm = total_array_height + label_margin_top_mm   * (draw_base_plate ? 2 : 1);
+
+echo(str("Occupied footprint, including labels",
+         draw_base_plate ? " and base plate" : "", ": ",
+         footprint_x_mm, " x ", footprint_y_mm, " mm"));
+echo(str("Build plate (", PRINTER_NAME, "): ", BUILD_PLATE_X_SIZE, " x ",
+         BUILD_PLATE_Y_SIZE, " mm  ->  using ",
+         round(100*footprint_x_mm/BUILD_PLATE_X_SIZE), "% of X and ",
+         round(100*footprint_y_mm/BUILD_PLATE_Y_SIZE), "% of Y"));
+
+if (footprint_x_mm > BUILD_PLATE_X_SIZE || footprint_y_mm > BUILD_PLATE_Y_SIZE)
+    echo(str("*** WARNING: this array does NOT fit the ", PRINTER_NAME, " build plate. ",
+             footprint_x_mm > BUILD_PLATE_X_SIZE
+               ? str("X overflows by ", footprint_x_mm - BUILD_PLATE_X_SIZE, " mm. ") : "",
+             footprint_y_mm > BUILD_PLATE_Y_SIZE
+               ? str("Y overflows by ", footprint_y_mm - BUILD_PLATE_Y_SIZE, " mm. ") : "",
+             "Reduce array_cells_x (currently ", array_cells_x, ") or array_cells_y (",
+             array_cells_y, "), narrow the swept range, or split the sweep over several ",
+             "prints. Geometry outside the plate is clipped or rejected at slicing, so ",
+             "this will not fail loudly later."));
+
 // ================================
 // LABEL TEXT GENERATION (with increments)
 // ================================
