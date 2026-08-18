@@ -128,7 +128,21 @@ build one of the geometries in Figure 10 of the paper:
 | `false` | > 0 | Recess cut straight into the channel floor, no raised feature (Fig 10-RIGHT), removing the in-channel obstruction. Hypothesised in the paper but not built there. |
 | `false` | 0 | Plain channel, no seat. |
 
-Note that `DOORMAT_SPHERE_RADIUS` and `DOORMAT_SPHERE_PENETRATION` are absolute millimetre values and do **not** scale with the sweep. The design tool prescribes a different seat radius for each channel width, so a single radius across a multi-width strip is correct for only one of the devices; set the width range to a single value when you need the seat matched exactly.
+**The seat derives itself from the closure model.** `DOORMAT_SPHERE_RADIUS = -1` (the default) computes the recess
+radius and depth per device from `KAPPA`, the open lumen left above the seat, and that device's channel width, using the same
+closed form the interactive design tool solves. The recess therefore spans the lumen by construction and rescales correctly
+across a width sweep. A positive radius overrides the model with a fixed value in mm, which does *not* scale -- use it only to
+reproduce a specific historical print. `0` removes the recess.
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `KAPPA` | 0.075 | Membrane deflection coefficient s/C for **your** resin and process. Required only when the seat is derived. The default is the value measured for single-layer NanoClear membranes in the paper and will not transfer to another material. |
+
+**You do not need `KAPPA` to start.** Print with `ENABLE_DOORMAT = false` -- a plain channel, no seat -- measure the sagitta
+across a range of widths, and fit the slope: that measurement *is* kappa. Only then does the seated geometry mean anything,
+which is why a derived recess is tied to the doormat being enabled. The console prints the full derivation per device (sagitta,
+membrane width, radius, depth in mm and in layers) and warns if the required depth exceeds the seat thickness, which means the
+doormat is too thin to contain the recess.
 
 `DOORMAT_SPHERE_PENETRATION` is measured down from whichever surface carries the seat --
 the doormat top when the doormat is on, the channel floor when it is off -- so a 0.5 mm

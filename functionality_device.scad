@@ -395,17 +395,36 @@ DOORMAT_THICKNESS_LAYERS   = 3;
 //        Larger angles = more taper = easier to print overhang
 DOORMAT_RAMP_ANGLE         = 45;
 
-// DOORMAT_SPHERE_RADIUS: Optional spherical indentation radius (mm)
-//   0  = No spherical cutout (flat or ramped top depending on RAMP_ANGLE)
-//   >0 = Subtracts sphere of this radius centered on doormat top
-//        Creates curved depression for improved sealing or flow control
-DOORMAT_SPHERE_RADIUS      = 0;
+// KAPPA: the membrane deflection coefficient, s/C -- the dimensionless sagitta-to-width
+// ratio of the deflected membrane, measured on YOUR resin, printer and exposure recipe.
+//
+// You do not need it to run this device the first time. Print with ENABLE_DOORMAT = false,
+// measure the sagitta of the plain membranes across a range of widths, and fit the slope
+// of s against C; that measurement IS kappa. Only once it is known does the seat below
+// become meaningful, which is why kappa is required only when the doormat is enabled.
+//
+// 0.075 is the value measured for single-layer NanoClear membranes at a 5-layer channel
+// height in the accompanying paper. It is specific to that material and process -- it
+// will not transfer to yours.
+KAPPA = 0.075;
 
-// DOORMAT_SPHERE_PENETRATION: How far sphere penetrates into doormat (mm)
-// Only used when DOORMAT_SPHERE_RADIUS > 0
-// Controls depth of spherical depression
-// Larger values = deeper bowl shape in doormat top
-DOORMAT_SPHERE_PENETRATION = 0.5;
+// DOORMAT_SPHERE_RADIUS: radius of the spherical seat recess, in mm.
+//   -1 (the default) = DERIVE IT from the closure model, per device, from KAPPA, the open
+//                      lumen above the seat, and that device's channel width. The recess
+//                      then scales correctly across a width sweep, and its width at the
+//                      seat top comes out equal to the channel width by construction.
+//    0               = no recess (flat or ramped seat top, per DOORMAT_RAMP_ANGLE).
+//   >0               = fixed radius in mm, ignoring the closure model. Use this only to
+//                      reproduce a specific historical print; it does NOT scale with the
+//                      width sweep, so on a multi-width strip it is right for at most one
+//                      device.
+DOORMAT_SPHERE_RADIUS      = -1;
+
+// DOORMAT_SPHERE_PENETRATION: depth of the recess below the seat top, in mm.
+//   -1 (the default) = derive alongside the radius (this is s - g, the distance the
+//                      membrane travels past the seat top).
+//   >0               = fixed depth in mm; only used when DOORMAT_SPHERE_RADIUS > 0.
+DOORMAT_SPHERE_PENETRATION = -1;
 
 
 // ===============================================================================
@@ -600,7 +619,27 @@ REQUESTED_COLS = WIDTH_SWEEP_ENABLE ? WIDTH_SWEEP_N : MAX_DEVICES_X;
 // Defined here rather than up beside ENABLE_DOORMAT: OpenSCAD evaluates top-level
 // assignments in file order, so reading the DOORMAT_SPHERE_* parameters before they are
 // assigned yields undef and silently disables the seat.
-SEAT_SPHERE_ENABLED = DOORMAT_SPHERE_RADIUS > 0 && DOORMAT_SPHERE_PENETRATION > 0;
+// 0 switches the recess off; -1 derives it from the closure model; >0 is an explicit radius.
+//
+// A DERIVED recess belongs to the seated design, which only exists once kappa is known, so
+// it is tied to the doormat: with the doormat off, -1 means "no recess" and you get a plain
+// channel -- exactly what you want for the kappa measurement itself, and kappa is then never
+// consulted. An EXPLICIT radius still works with the doormat off, which is how you get the
+// recess-cut-straight-into-the-floor variant.
+SEAT_SPHERE_DERIVED = DOORMAT_SPHERE_RADIUS < 0 && ENABLE_DOORMAT;
+SEAT_SPHERE_ENABLED = DOORMAT_SPHERE_RADIUS > 0 || SEAT_SPHERE_DERIVED;
+
+assert(!(SEAT_SPHERE_ENABLED && SEAT_SPHERE_DERIVED) || KAPPA > 0,
+       str("KAPPA = ", KAPPA, " but the spherical seat is set to derive itself from the ",
+           "closure model. Either measure kappa first (print with ENABLE_DOORMAT = false, ",
+           "fit the sagitta against the membrane width) and set it here, or set ",
+           "DOORMAT_SPHERE_RADIUS to an explicit radius in mm, or to 0 for no recess."));
+
+assert(!(SEAT_SPHERE_ENABLED && !SEAT_SPHERE_DERIVED) || DOORMAT_SPHERE_PENETRATION > 0,
+       str("DOORMAT_SPHERE_RADIUS = ", DOORMAT_SPHERE_RADIUS, " is an explicit radius, so ",
+           "DOORMAT_SPHERE_PENETRATION must be an explicit depth in mm too, but it is ",
+           DOORMAT_SPHERE_PENETRATION, ". Set both explicitly, or set the radius to -1 to ",
+           "derive both from the closure model."));
 
 // The strip is a single row, so the row-wise sweep has nowhere to vary: every device
 // would silently receive swept_param_2_min. Ignore it in that mode (the affected
@@ -617,10 +656,11 @@ if (DEBUG_ARRAY_MODE == 0 && swept_param_2_min != swept_param_2_max)
 
 echo(str("  Seat configuration: doormat ", ENABLE_DOORMAT ? "ON" : "OFF",
          ", spherical recess ",
-         SEAT_SPHERE_ENABLED
-           ? str("r=", DOORMAT_SPHERE_RADIUS, " mm, ", DOORMAT_SPHERE_PENETRATION,
-                 " mm deep into the ", ENABLE_DOORMAT ? "doormat top" : "channel floor")
-           : "OFF"));
+         !SEAT_SPHERE_ENABLED ? "OFF"
+           : SEAT_SPHERE_DERIVED
+             ? str("derived per device from kappa=", KAPPA, ", cut into the doormat top")
+             : str("r=", DOORMAT_SPHERE_RADIUS, " mm, ", DOORMAT_SPHERE_PENETRATION,
+                   " mm deep into the ", ENABLE_DOORMAT ? "doormat top" : "channel floor")));
 
 assert(WIDTH_STEP_PX > 0,
        str("WIDTH_STEP_PX = ", WIDTH_STEP_PX, " -- the interval must be positive. ",
@@ -962,6 +1002,21 @@ PARAM_UNIT_LAYER = 1;  // Parameter uses layers (converted via LAYER_THICKNESS_C
 // ===============================================================================
 
 // Get the unit type (pixel or layer) for a given parameter index
+// ---------------------------------------------------------------------------
+// CLOSURE MODEL -- the same equations the interactive design tool solves.
+// Given the open lumen height g above the seat, the membrane deflection coefficient
+// kappa, and the channel width W (all in mm), these return the deflected membrane's
+// sagitta, its width, the radius of the matching spherical seat, and how far the
+// membrane travels below the seat top. Linear model (n = 1), which has a closed form.
+// ---------------------------------------------------------------------------
+function seat_sagitta(g, k, W) =
+    (g*(1 - 4*k*k) + sqrt(g*g*(1 + 4*k*k)*(1 + 4*k*k) + 4*k*k*W*W)) / 2;
+function seat_membrane_width(g, k, W) = seat_sagitta(g, k, W) / k;
+function seat_radius(g, k, W) =
+    let (s = seat_sagitta(g, k, W), C = s/k) (C*C + 4*s*s) / (8*s);
+function seat_depth(g, k, W) = seat_sagitta(g, k, W) - g;
+
+
 function get_param_unit_type(param_idx) =
     (param_idx == PARAM_MEMBRANE_X || param_idx == PARAM_MEMBRANE_Y ||
      param_idx == PARAM_CUTOUT_X   || param_idx == PARAM_CUTOUT_Y) ? PARAM_UNIT_PIXEL :
@@ -1691,15 +1746,44 @@ module create_constrained_spherical_cutouts(
                 // Seat surface: the doormat top when there is a doormat, otherwise the
                 // channel floor. Penetration is measured down from it in both cases.
                 dz = ENABLE_DOORMAT ? DOORMAT_THICKNESS_LAYERS*LAYER_THICKNESS_CONST : 0;
-                sphere_bottom = final_cb_param + dz - DOORMAT_SPHERE_PENETRATION;
-                sphere_z = sphere_bottom + DOORMAT_SPHERE_RADIUS;
 
-                if (DEBUG_ECHO) echo(str("    Sphere #", i, " at X=", center_x, " Z=", sphere_z));
+                // Open lumen above the seat, taken from the geometry rather than assumed:
+                // membrane plane minus seat top. This is the g of the closure model, so a
+                // derived seat follows the channel height and the seat height automatically.
+                g_open = membrane_plane_z_param - (final_cb_param + dz);
+
+                // A derived seat scales with THIS device's width; an explicit radius does not.
+                seat_R   = SEAT_SPHERE_DERIVED ? seat_radius(g_open, KAPPA, cutout_x_mm)
+                                               : DOORMAT_SPHERE_RADIUS;
+                seat_pen = SEAT_SPHERE_DERIVED ? seat_depth(g_open, KAPPA, cutout_x_mm)
+                                               : DOORMAT_SPHERE_PENETRATION;
+
+                sphere_bottom = final_cb_param + dz - seat_pen;
+                sphere_z = sphere_bottom + seat_R;
+
+                if (DEBUG_ECHO && SEAT_SPHERE_DERIVED)
+                    echo(str("    Seat derived for W=", round(cutout_x_mm/PIXEL_SIZE_CONST),
+                             " px: g=", g_open/LAYER_THICKNESS_CONST, " layers, kappa=", KAPPA,
+                             " -> s=", seat_sagitta(g_open, KAPPA, cutout_x_mm),
+                             " mm, C=", seat_membrane_width(g_open, KAPPA, cutout_x_mm),
+                             " mm, R=", seat_R, " mm, depth=", seat_pen, " mm (",
+                             seat_pen/LAYER_THICKNESS_CONST, " layers), recess width=",
+                             2*sqrt(max(0, 2*seat_R*seat_pen - seat_pen*seat_pen)), " mm"));
+                if (DEBUG_ECHO && SEAT_SPHERE_DERIVED && ENABLE_DOORMAT && seat_pen > dz)
+                    echo(str("*** NOTE: the derived recess depth (", seat_pen,
+                             " mm) exceeds the doormat thickness (", dz, " mm), so the seat ",
+                             "cannot contain it and the recess cuts below the channel floor. ",
+                             "Raise DOORMAT_THICKNESS_LAYERS - the paper's recipe leaves a ",
+                             "5-layer opening above a seat that fills the rest of the channel ",
+                             "height - or narrow the channel."));
+                if (DEBUG_ECHO && !SEAT_SPHERE_DERIVED)
+                    echo(str("    Sphere #", i, " at X=", center_x, " Z=", sphere_z,
+                             " (explicit R=", seat_R, " mm, depth=", seat_pen, " mm)"));
 
                 color("Crimson",0.7)
                 intersection() {
                     translate([center_x, cutout_y_pos + cutout_y_mm/2, sphere_z])
-                        sphere(r=DOORMAT_SPHERE_RADIUS);
+                        sphere(r=seat_R);
                     // Floor of the constraint volume: normally just under the channel
                     // floor, but if the requested penetration is deeper than the doormat
                     // the cap genuinely extends below it -- follow the sphere instead of
