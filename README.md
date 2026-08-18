@@ -138,6 +138,12 @@ reproduce a specific historical print. `0` removes the recess.
 |---|---|---|
 | `KAPPA` | 0.075 | Membrane deflection coefficient s/C for **your** resin and process. Required only when the seat is derived. The default is the value measured for single-layer NanoClear membranes in the paper and will not transfer to another material. |
 
+**In derived mode the control chamber is sized by the model too.** The closure model returns C, the width the deflected
+membrane must have; the chamber is what clamps the membrane, so the chamber width is set to C rather than to
+`cutout + MEMBRANE_MARGIN_PX`. That makes the arc's chord at the membrane plane coincide with the chamber walls, which is the
+geometric condition the seat is solved for. It also makes the device a little wider than the fixed-margin version, and the
+width follows the sweep. With an explicit radius the chamber falls back to the margin rule.
+
 **You do not need `KAPPA` to start.** Print with `ENABLE_DOORMAT = false` -- a plain channel, no seat -- measure the sagitta
 across a range of widths, and fit the slope: that measurement *is* kappa. Only then does the seated geometry mean anything,
 which is why a derived recess is tied to the doormat being enabled. The console prints the full derivation per device (sagitta,

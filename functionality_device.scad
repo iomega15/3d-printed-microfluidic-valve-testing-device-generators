@@ -821,9 +821,22 @@ LAYER_THICKNESS_CONST = PRINTER_LAYER_THICKNESSES[SELECTED_PRINTER];
 // over while they are left at their derived value (cutout + margin) -- that case
 // is what a width sweep needs, because the cutout changes from column to column.
 // Edit default_membrane_cavity_x/y_pixel_multiple and it is used verbatim.
+// Open lumen left above the seat, in mm, from the layer counts (the g of the closure model).
+function open_lumen_mm() =
+    (default_cutout_z_size_in_layers - (ENABLE_DOORMAT ? DOORMAT_THICKNESS_LAYERS : 0))
+        * LAYER_THICKNESS_CONST;
+
+// The membrane width the closure model requires for a given channel width, in pixels.
+// This is the C the design tool returns: the deflected membrane's chord at the membrane
+// plane. The control chamber is what clamps the membrane, so the chamber must be this
+// wide -- build it narrower and the membrane is too narrow to close the channel.
+function required_membrane_width_px(cxp) =
+    round(seat_membrane_width(open_lumen_mm(), KAPPA, cxp*PIXEL_SIZE_CONST) / PIXEL_SIZE_CONST);
+
 function chamber_x_px(cxp) =
-    (MEMBRANE_MARGIN_PX >= 0 &&
-     default_membrane_cavity_x_pixel_multiple == default_cutout_x_size_in_pixels + MEMBRANE_MARGIN_PX)
+    SEAT_SPHERE_DERIVED ? required_membrane_width_px(cxp)
+    : (MEMBRANE_MARGIN_PX >= 0 &&
+       default_membrane_cavity_x_pixel_multiple == default_cutout_x_size_in_pixels + MEMBRANE_MARGIN_PX)
         ? cxp + MEMBRANE_MARGIN_PX
         : default_membrane_cavity_x_pixel_multiple;
 function chamber_y_px(cyp) =
@@ -1788,9 +1801,15 @@ module create_constrained_spherical_cutouts(
                     // floor, but if the requested penetration is deeper than the doormat
                     // the cap genuinely extends below it -- follow the sphere instead of
                     // slicing it off, which is what produced a flat-bottomed seat.
+                    // ...and bounded in X and Y by the LUMEN FOOTPRINT. This matters:
+                    // the sphere widens as it rises, so above the seat top it is wider than
+                    // the channel. Inside the lumen that is harmless (already void), but a
+                    // volume wider than the lumen would carve into the solid side walls.
+                    // The cube used to be 2x the cutout, which is exactly how the derived
+                    // seat cut straight through the walls of the device.
                     let (_cz = min(final_cb_param - z_guard, sphere_bottom - epsilon))
-                    translate([center_x - cutout_x_mm, cutout_y_pos - cutout_y_mm, _cz])
-                        cube([cutout_x_mm*2, cutout_y_mm*2, membrane_plane_z_param - _cz]);
+                    translate([center_x - cutout_x_mm/2, cutout_y_pos, _cz])
+                        cube([cutout_x_mm, cutout_y_mm, membrane_plane_z_param - _cz]);
                 }
             }
         }
@@ -2497,9 +2516,11 @@ echo(str(DEBUG_ARRAY_MODE == 0
              : "CHAMBER: X = ", chamber_x_px(default_cutout_x_size_in_pixels),
          " px, Y = ", chamber_y_px(default_cutout_y_size_in_pixels),
          " px  (source: ",
-         chamber_x_px(default_cutout_x_size_in_pixels) == default_membrane_cavity_x_pixel_multiple
-             ? "explicit default_membrane_cavity_*_pixel_multiple"
-             : str("MEMBRANE_MARGIN_PX = ", MEMBRANE_MARGIN_PX, ", i.e. cutout + margin"), ")"));
+         SEAT_SPHERE_DERIVED
+             ? "required membrane width C from the closure model, so the membrane chord matches the chamber walls"
+             : chamber_x_px(default_cutout_x_size_in_pixels) == default_membrane_cavity_x_pixel_multiple
+                 ? "explicit default_membrane_cavity_*_pixel_multiple"
+                 : str("MEMBRANE_MARGIN_PX = ", MEMBRANE_MARGIN_PX, ", i.e. cutout + margin"), ")"));
 
 swept_parameter_grid_generator();
 
