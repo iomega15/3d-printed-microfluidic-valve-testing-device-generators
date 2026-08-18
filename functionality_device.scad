@@ -360,10 +360,22 @@ ENABLE_DOORMAT             = false;
 //   false = Full doormat rendered (production setting)
 DOORMAT_HALF_VIEW_ENABLE   = true;
 
-// DOORMAT_X_PIXELS: Doormat width in X direction (pixels)
-// Should be smaller than cutout width to leave clearance
-// Example: 40 pixels × 0.032mm = 1.28mm width
-DOORMAT_X_PIXELS           = 40;
+// DOORMAT_X_PIXELS: seat width across the channel (the X direction), in pixels.
+//
+//   -1 (the default)  = MATCH THE LUMEN. The seat spans the full channel width, so it
+//                       follows the width sweep automatically: a 110 px device gets a
+//                       110 px seat, a 140 px device gets a 140 px seat. This is the
+//                       normal case -- a seat narrower than the channel leaves an open
+//                       gap down each side of it for fluid to bypass.
+//   a positive value  = FIXED width in pixels, independent of the channel width. Use
+//                       this only when you deliberately want a seat narrower than the
+//                       lumen; it does NOT scale with WIDTH_MIN_PX/WIDTH_MAX_PX.
+//
+// Note for anyone checking the render: with the default, looking straight through the
+// lumen at seat height shows no opening, because the seat spans the full width. That is
+// correct -- the flow path runs OVER the seat (the channel is taller than the seat), not
+// around it. Only a seat taller than the channel would actually block the lumen.
+DOORMAT_X_PIXELS           = -1;
 
 // DOORMAT_Y_PIXELS: Doormat depth in Y direction (pixels)
 // Should span most of cutout depth but leave clearance at walls
@@ -1274,13 +1286,18 @@ let(
 // Creates raised doormat feature at bottom of valve seat cutouts
 // Optionally applies half-view for visualization
 module doormat_solid(center_x, cutout_y_pos, base_z, cutout_x_mm, cutout_y_mm) {
-    dx = DOORMAT_X_PIXELS*PIXEL_SIZE_CONST;
+    // -1 (or any non-positive value) means "span the lumen", which is what makes the
+    // seat track the channel-width sweep. A positive value is taken as a fixed width.
+    dx = DOORMAT_X_PIXELS > 0 ? DOORMAT_X_PIXELS*PIXEL_SIZE_CONST : cutout_x_mm;
     dy = DOORMAT_Y_PIXELS*PIXEL_SIZE_CONST;
     dz = DOORMAT_THICKNESS_LAYERS*LAYER_THICKNESS_CONST;
     zc = base_z + dz/2;
     ext = DOORMAT_RAMP_ANGLE>0 ? (dz/2)/tan(DOORMAT_RAMP_ANGLE) : 0;
 
-    if (DEBUG_ECHO) echo(str("    Creating doormat solid at X=", center_x, " Y=", cutout_y_pos + cutout_y_mm/2, " Z=", zc));
+    if (DEBUG_ECHO) echo(str("    Creating doormat solid at X=", center_x, " Y=",
+        cutout_y_pos + cutout_y_mm/2, " Z=", zc, " | seat width ", dx, " mm (",
+        DOORMAT_X_PIXELS > 0 ? str("fixed ", DOORMAT_X_PIXELS, " px")
+                             : str("matched to the ", round(cutout_x_mm/PIXEL_SIZE_CONST), " px lumen"), ")"));
     if (DOORMAT_HALF_VIEW_ENABLE && DEBUG_ECHO) echo("      Half-view enabled for doormat visualization");
 
     intersection() {

@@ -128,6 +128,8 @@ build one of the geometries in Figure 10 of the paper:
 | `false` | > 0 | Recess cut straight into the channel floor, no raised feature (Fig 10-RIGHT), removing the in-channel obstruction. Hypothesised in the paper but not built there. |
 | `false` | 0 | Plain channel, no seat. |
 
+Note that `DOORMAT_SPHERE_RADIUS` and `DOORMAT_SPHERE_PENETRATION` are absolute millimetre values and do **not** scale with the sweep. The design tool prescribes a different seat radius for each channel width, so a single radius across a multi-width strip is correct for only one of the devices; set the width range to a single value when you need the seat matched exactly.
+
 `DOORMAT_SPHERE_PENETRATION` is measured down from whichever surface carries the seat --
 the doormat top when the doormat is on, the channel floor when it is off -- so a 0.5 mm
 recess is 0.5 mm deep either way. The console states which of the four it built on every
@@ -135,7 +137,7 @@ render.
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `DOORMAT_X_PIXELS` | 40 | *(doormat only)* Seat width. **Must be smaller than the channel width**, or the seat plugs the channel end to end. |
+| `DOORMAT_X_PIXELS` | `-1` | *(doormat only)* Seat width across the channel. **`-1` means match the lumen**, so the seat follows the width sweep automatically -- a 110 px device gets a 110 px seat. A positive value pins the seat to that fixed width on every device instead, which is only what you want if you deliberately need a seat narrower than the channel. With the default, looking through the lumen at seat height shows no opening: that is correct, the flow path runs *over* the seat, which is shorter than the channel is tall. |
 | `DOORMAT_Y_PIXELS` | 72 | Seat length. |
 | `DOORMAT_THICKNESS_LAYERS` | 3 | Seat height. Set it to `channel height - 5` layers to leave a 5-layer opening above the seat. |
 | `DOORMAT_RAMP_ANGLE` | 45 | Chamfer on the seat edges: 45 for the plain doormat, 0 for the cut valve seat. |
