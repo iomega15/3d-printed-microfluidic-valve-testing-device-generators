@@ -320,7 +320,13 @@ default_cutout_y_size_in_pixels = SQUARE_CUTOUT ? default_cutout_x_size_in_pixel
 // default_cutout_z_size_in_layers: Cutout height in Z direction (layers)
 // This is the vertical height of the squeeze cavity
 // Example: 25 layers × 0.050mm/layer = 1.25mm height
-default_cutout_z_size_in_layers = 5;
+//
+// The default (20) is the paper's seated-valve recipe: a 20-layer channel carrying a
+// 15-layer doormat leaves a 5-layer (250 um) open lumen over the seat, and the derived
+// spherical recess then comes out 5 layers deep at its lowest point (paper Section 3.4.1).
+// For the kappa-measurement coupon (ENABLE_DOORMAT = false), set this to 5 -- the plain
+// 5-layer channel is the geometry kappa = 0.075 was measured on.
+default_cutout_z_size_in_layers = 20;
 
 
 // ===============================================================================
@@ -351,14 +357,18 @@ default_cutout_z_size_in_layers = 5;
 // ENABLE_DOORMAT: master enable for the raised doormat feature
 //   true  = Create doormat features in all VALVE_SEAT style cutouts
 //   false = All cutouts are simple cavities (no raised features)
-ENABLE_DOORMAT             = false;
+//
+// The default (true) emits the paper's adopted configuration: doormat + derived spherical
+// recess. Set false (with default_cutout_z_size_in_layers = 5) for the plain coupon that
+// kappa is measured from.
+ENABLE_DOORMAT             = true;
 
 // DOORMAT_HALF_VIEW_ENABLE: Visualization control for doormat features
 //   true  = Cut away half of doormat for cross-section view (visualization only)
 //           Only the Y-min half is removed, showing internal structure
 //           DOES NOT affect device structure, only doormat visibility
 //   false = Full doormat rendered (production setting)
-DOORMAT_HALF_VIEW_ENABLE   = true;
+DOORMAT_HALF_VIEW_ENABLE   = false;
 
 // DOORMAT_X_PIXELS: seat width across the channel (the X direction), in pixels.
 //
@@ -386,7 +396,10 @@ DOORMAT_Y_PIXELS           = 72;
 // This is how far the raised platform extends up from cutout bottom
 // Thicker = stiffer seal, Thinner = more compliant valve action
 // Example: 20 layers × 0.050mm = 1.0mm thickness
-DOORMAT_THICKNESS_LAYERS   = 3;
+//
+// The default (15) pairs with the 20-layer channel above: it leaves the paper's 5-layer
+// open lumen over the seat and is thick enough to carry the full derived recess depth.
+DOORMAT_THICKNESS_LAYERS   = 15;
 
 // DOORMAT_RAMP_ANGLE: Angle of tapered sides (degrees from vertical)
 //   0  = Vertical walls (no taper) - maximum material
